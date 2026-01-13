@@ -9,6 +9,7 @@ from .helpers import truncate_label, safe_divide, format_number, ensure_dir
 from .date_utils import parse_date, get_year, get_month, get_weekday, get_hour
 from .cache import CacheManager
 from .persistence import save_json, load_json, save_csv, load_csv
+from .file_scanner import FileScanner
 
 __all__ = [
     "configure_chinese_font",
@@ -27,4 +28,5 @@ __all__ = [
     "load_json",
     "save_csv",
     "load_csv",
+    "FileScanner",
 ]
