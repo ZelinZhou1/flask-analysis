@@ -129,6 +129,21 @@ def is_python_file(filename: str) -> bool:
     return get_file_extension(filename) == "py"
 
 
+def is_valid_file(filename: str, extensions: list[str]) -> bool:
+    """
+    检查文件是否在允许的扩展名列表中
+
+    Args:
+        filename: 文件名
+        extensions: 允许的扩展名列表（不含点）
+
+    Returns:
+        是否有效
+    """
+    ext = get_file_extension(filename)
+    return ext in [e.lower().lstrip(".") for e in extensions]
+
+
 def clean_filename(filename: str) -> str:
     """
     清理文件名，移除不安全字符
