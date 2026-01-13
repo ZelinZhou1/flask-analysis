@@ -154,11 +154,11 @@ WARM_COLORS = {
 
 ## 📋 开发团队
 
-- Alice Chen <alice.chen@example.com>
-- Bob Wang <bob.wang@example.com>
-- Charlie Liu <charlie.liu@example.com>
-- Diana Zhang <diana.zhang@example.com>
-- Edward Wu <edward.wu@example.com>
+- Alice Chen
+- Bob Wang
+- Charlie Liu
+- Diana Zhang
+- Edward Wu
 
 ## 📄 许可证
 
