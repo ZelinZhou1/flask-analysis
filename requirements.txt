@@ -1,0 +1,42 @@
+# Flask Repository Analyzer - 依赖列表
+# =====================================
+
+# Git 历史分析
+pydriller>=2.6            # Git 仓库挖掘工具，替代 subprocess
+gitpython>=3.1.40         # Git 操作库
+
+# 代码分析
+libcst>=1.1.0             # 具体语法树分析，支持代码重构
+radon>=6.0.1              # 圈复杂度和维护性指数计算
+
+# 符号执行与约束求解
+z3-solver>=4.12.0         # Z3 约束求解器
+
+# 动态追踪
+pysnooper>=1.2.0          # 调试和动态追踪工具
+
+# 数据处理
+pandas>=2.0.0             # 数据分析和处理
+numpy>=1.24.0             # 数值计算
+
+# 静态可视化
+matplotlib>=3.7.0         # 基础绑图库
+seaborn>=0.12.0           # 统计可视化
+wordcloud>=1.9.0          # 词云生成
+
+# 交互式可视化
+plotly>=5.18.0            # 交互式图表
+
+# 网络图和依赖分析
+networkx>=3.1             # 图论和网络分析
+
+# HTTP 请求（GitHub API）
+requests>=2.31.0          # HTTP 客户端
+
+# 测试
+pytest>=7.4.0             # 测试框架
+pytest-cov>=4.1.0         # 测试覆盖率
+
+# 可选：中文字体支持
+# 如果 matplotlib 中文显示有问题，可安装：
+# pip install matplotlib-fonts
