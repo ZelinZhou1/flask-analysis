@@ -42,27 +42,26 @@ FILE_EXTENSIONS = {
     ".scss": "SCSS",
     ".sass": "Sass",
     ".less": "Less",
-    # 配置文件
+    # 配置和数据
     ".json": "JSON",
-    ".yaml": "YAML",
-    ".yml": "YAML",
-    ".toml": "TOML",
-    ".ini": "INI",
-    ".cfg": "Config",
-    ".conf": "Config",
-    # 文档
-    ".md": "Markdown",
-    ".rst": "reStructuredText",
-    ".txt": "Text",
-    # 模板
-    ".jinja": "Jinja2",
-    ".jinja2": "Jinja2",
-    ".j2": "Jinja2",
-    # 其他
+    ".yaml": "Configuration",
+    ".yml": "Configuration",
+    ".toml": "Configuration",
+    ".ini": "Configuration",
+    ".cfg": "Configuration",
+    ".conf": "Configuration",
+    ".dockerfile": "Configuration",
+    "Dockerfile": "Configuration",
+    # 数据库
+    ".sql": "Database",
+    ".db": "Database",
+    ".sqlite": "Database",
+    ".sqlite3": "Database",
+    # 脚本
     ".sh": "Shell",
+    ".bash": "Shell",
     ".bat": "Batch",
     ".ps1": "PowerShell",
-    ".sql": "SQL",
     ".xml": "XML",
 }
 
