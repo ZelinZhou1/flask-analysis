@@ -245,6 +245,22 @@ def is_weekend(date_input: Union[str, datetime]) -> Optional[bool]:
     return weekday >= 5
 
 
+def is_business_day(date_input: Union[str, datetime]) -> Optional[bool]:
+    """
+    判断是否为工作日
+
+    Args:
+        date_input: 日期输入
+
+    Returns:
+        是否为工作日
+    """
+    weekend = is_weekend(date_input)
+    if weekend is None:
+        return None
+    return not weekend
+
+
 def get_quarter(date_input: Union[str, datetime]) -> Optional[int]:
     """
     获取季度（1-4）
