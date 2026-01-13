@@ -14,10 +14,10 @@ from typing import Any, Dict, List, Optional, Union
 class DateTimeEncoder(json.JSONEncoder):
     """处理datetime对象的JSON编码器"""
 
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
+    def default(self, o: Any) -> Any:
+        if isinstance(o, datetime):
+            return o.isoformat()
+        return super().default(o)
 
 
 def save_json(
@@ -273,6 +273,32 @@ def get_file_size(file_path: Union[str, Path]) -> int:
     if path.exists():
         return path.stat().st_size
     return 0
+
+
+import shutil
+
+
+def backup_file(file_path: Union[str, Path]) -> bool:
+    """
+    备份文件（添加.bak后缀）
+
+    Args:
+        file_path: 原文件路径
+
+    Returns:
+        是否备份成功
+    """
+    path = Path(file_path)
+    if not path.exists():
+        return False
+
+    backup_path = path.with_suffix(path.suffix + ".bak")
+    try:
+        shutil.copy2(path, backup_path)
+        return True
+    except Exception as e:
+        print(f"备份失败: {file_path}, 错误: {e}")
+        return False
 
 
 def get_file_mtime(file_path: Union[str, Path]) -> Optional[datetime]:
