@@ -63,6 +63,33 @@ class BranchCollector:
 
         return branches_data
 
+    def get_active_branches(self, days: int = 30) -> List[str]:
+        """
+        获取最近活跃的分支
+
+        Args:
+            days: 活跃天数阈值
+
+        Returns:
+            活跃分支名称列表
+        """
+        active = []
+        try:
+            from datetime import datetime, timezone, timedelta
+
+            now = datetime.now(timezone.utc)
+            threshold = now - timedelta(days=days)
+
+            repo = self.git.repo
+            for head in repo.heads:
+                commit_date = head.commit.committed_datetime
+                if commit_date > threshold:
+                    active.append(head.name)
+        except Exception as e:
+            logger.error(f"获取活跃分支失败: {str(e)}")
+
+        return active
+
     def get_merged_branches(self, target_branch: str = "main") -> List[str]:
         """
         获取已合并到目标分支的分支列表
