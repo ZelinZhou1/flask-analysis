@@ -77,7 +77,15 @@ class CodeStats:
         Returns:
             Dict: 汇总统计信息
         """
-        summary = {"files": 0, "total_lines": 0, "total_code": 0, "languages": {}}
+        summary = {
+            "files": 0,
+            "total_lines": 0,
+            "total_code": 0,
+            "total_size": 0,
+            "languages": {},
+            "avg_file_size": 0,
+            "max_file_size": 0,
+        }
 
         for root, _, files in os.walk(dir_path):
             for file in files:
@@ -91,8 +99,15 @@ class CodeStats:
                     summary["files"] += 1
                     summary["total_lines"] += file_stats["line_stats"]["total"]
                     summary["total_code"] += file_stats["line_stats"]["code"]
+                    summary["total_size"] += file_stats["size_bytes"]
+                    summary["max_file_size"] = max(
+                        summary["max_file_size"], file_stats["size_bytes"]
+                    )
 
                     ext = file_stats["extension"]
                     summary["languages"][ext] = summary["languages"].get(ext, 0) + 1
+
+        if summary["files"] > 0:
+            summary["avg_file_size"] = summary["total_size"] / summary["files"]
 
         return summary
