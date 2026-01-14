@@ -113,3 +113,17 @@ class MessageAnalyzer:
         filtered_words = [w for w in words if w not in stopwords and len(w) > 2]
 
         return dict(Counter(filtered_words))
+
+    def extract_keywords(self, messages: List[str], top_n: int = 10) -> List[tuple]:
+        """
+        提取关键词
+
+        Args:
+            messages: 消息列表
+            top_n: 返回前N个
+
+        Returns:
+            关键词列表 [(word, count), ...]
+        """
+        word_freq = self.generate_word_cloud_data(messages)
+        return sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:top_n]
