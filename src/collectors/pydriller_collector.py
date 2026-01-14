@@ -3,7 +3,7 @@ PyDriller 采集器
 使用 PyDriller 库分析 Git 仓库历史
 """
 
-from typing import List, Dict, Any, Generator
+from typing import List, Dict, Any, Generator, Optional
 from pydriller import Repository
 from datetime import datetime
 import os
@@ -17,7 +17,7 @@ class PyDrillerCollector:
     负责收集 Git 提交历史信息的采集器
     """
 
-    def __init__(self, repo_path: str, branch: str = None):
+    def __init__(self, repo_path: str, branch: Optional[str] = None):
         """
         初始化采集器
 
@@ -68,6 +68,22 @@ class PyDrillerCollector:
         except Exception as e:
             logger.error(f"采集提交历史时出错: {str(e)}")
             raise
+
+    def collect_commits_by_author(self, author_name: str) -> List[Dict[str, Any]]:
+        """
+        采集特定作者的所有提交
+
+        Args:
+            author_name: 作者名字（模糊匹配）
+
+        Returns:
+            提交列表
+        """
+        commits = []
+        for commit in self.collect_commits():
+            if author_name.lower() in commit["author_name"].lower():
+                commits.append(commit)
+        return commits
 
     def collect_file_history(self, file_path: str) -> List[Dict[str, Any]]:
         """
