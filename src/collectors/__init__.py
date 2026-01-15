@@ -6,6 +6,7 @@
 from .pydriller_collector import PyDrillerCollector
 from .branch_collector import BranchCollector
 from .tag_collector import TagCollector
-from .github_api import GitHubCollector
+from .github_api import GitHubAPI
 
-__all__ = ["PyDrillerCollector", "BranchCollector", "TagCollector", "GitHubCollector"]
+__all__ = ["PyDrillerCollector", "BranchCollector", "TagCollector", "GitHubAPI"]
+
