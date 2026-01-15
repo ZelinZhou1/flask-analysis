@@ -1,80 +1,60 @@
 # -*- coding: utf-8 -*-
 """
 中文字体配置模块
-为matplotlib图表提供完整的中文显示支持
+确保matplotlib图表中文正常显示
 """
 
 import platform
-from pathlib import Path
-from typing import Optional
 import warnings
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-_is_configured: bool = False
+_configured = False
 
 
 def configure_chinese_font() -> bool:
-    """
-    配置matplotlib使用中文字体
-    """
-    global _is_configured
+    """配置中文字体"""
+    global _configured
     
-    if _is_configured:
+    if _configured:
         return True
     
-    # 抑制字体警告
-    warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
+    warnings.filterwarnings('ignore', category=UserWarning)
     
-    system = platform.system()
-    
-    if system == "Windows":
-        # Windows系统字体
-        font_options = [
-            "Microsoft YaHei",
-            "SimHei", 
-            "SimSun",
-            "KaiTi",
-        ]
-        
-        # 配置字体
-        plt.rcParams['font.sans-serif'] = font_options + ['DejaVu Sans']
-        plt.rcParams['font.family'] = 'sans-serif'
-        plt.rcParams['axes.unicode_minus'] = False
-        
-        # 尝试直接添加字体文件
-        font_paths = [
-            "C:/Windows/Fonts/msyh.ttc",
-            "C:/Windows/Fonts/simhei.ttf",
-        ]
-        
-        for fp in font_paths:
-            if Path(fp).exists():
-                try:
-                    fm.fontManager.addfont(fp)
-                except:
-                    pass
+    if platform.system() == "Windows":
+        font_path = Path("C:/Windows/Fonts/msyh.ttc")
+        if font_path.exists():
+            try:
+                fm.fontManager.addfont(str(font_path))
+                font_prop = fm.FontProperties(fname=str(font_path))
+                font_name = font_prop.get_name()
+                
+                plt.rcParams['font.sans-serif'] = [font_name, 'Microsoft YaHei', 'SimHei', 'DejaVu Sans']
+            except Exception as e:
+                plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'DejaVu Sans']
+        else:
+            plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'DejaVu Sans']
     else:
         plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
-        plt.rcParams['axes.unicode_minus'] = False
     
-    _is_configured = True
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['axes.unicode_minus'] = False
+    
+    _configured = True
     return True
 
 
-def get_chinese_font() -> Optional[fm.FontProperties]:
-    """获取中文字体属性对象"""
+def get_chinese_font():
+    """获取中文字体属性"""
     configure_chinese_font()
-    
-    font_path = "C:/Windows/Fonts/msyh.ttc"
-    if Path(font_path).exists():
-        return fm.FontProperties(fname=font_path)
-    
+    font_path = Path("C:/Windows/Fonts/msyh.ttc")
+    if font_path.exists():
+        return fm.FontProperties(fname=str(font_path))
     return None
 
 
 def get_font_name() -> str:
-    """获取配置的中文字体名称"""
-    configure_chinese_font()
+    """获取字体名称"""
     return "Microsoft YaHei"
