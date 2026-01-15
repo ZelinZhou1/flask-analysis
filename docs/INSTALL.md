@@ -1,7 +1,5 @@
-# docs/INSTALL.md
-"""
-安装指南文档 - Flask仓库分析工具
-"""
+# Flask Repository Analyzer 安装指南
+
 
 # Flask Repository Analyzer 安装指南
 
