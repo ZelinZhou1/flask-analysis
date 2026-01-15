@@ -290,20 +290,50 @@ def generate_visualizations(data):
     logger.info(f"可视化图表已保存到: {OUTPUT_DIR}")
 
 
+def fetch_github_data(target: str = "all"):
+    """
+    采集GitHub数据
+    
+    Args:
+        target: 采集目标 ("issues", "prs", "contributors", "all")
+    """
+    from src.collectors.issues_collector import IssuesCollector
+    
+    GITHUB_REPO = "pallets/flask"
+    collector = IssuesCollector(GITHUB_REPO)
+    
+    ensure_directories()
+    
+    if target in ["issues", "all"]:
+        logger.info("采集Issues...")
+        issues = collector.collect_issues(max_pages=50)
+        collector.save_to_json(issues, str(DATA_DIR / "issues.json"))
+    
+    if target in ["prs", "all"]:
+        logger.info("采集PRs...")
+        prs = collector.collect_prs(max_pages=50)
+        collector.save_to_json(prs, str(DATA_DIR / "pull_requests.json"))
+    
+    if target in ["contributors", "all"]:
+        logger.info("采集贡献者...")
+        contributors = collector.collect_contributors(max_pages=20)
+        collector.save_to_json(contributors, str(DATA_DIR / "contributors.json"))
+    
+    logger.info("GitHub数据采集完成")
+
 
 def main():
-    """Main execution flow."""
-    logger.info("Starting Flask Repo Analyzer...")
+    """主程序入口"""
+    logger.info("启动Flask仓库分析器...")
     ensure_directories()
 
     commits = collect_data()
     if not commits:
-        logger.error("Data collection failed or no commits found. Exiting.")
+        logger.error("数据采集失败，退出")
         return
 
     analysis_results = analyze_stats(commits)
 
-    # Save analysis summary
     summary = {
         "repo_stats": analysis_results["repo_stats"],
         "complexity_stats": {
@@ -314,12 +344,49 @@ def main():
         "total_commits": len(commits),
     }
     with open(DATA_DIR / "analysis_summary.json", "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+        json.dump(summary, f, indent=2, ensure_ascii=False)
 
     generate_visualizations(analysis_results)
 
-    logger.info("Analysis complete!")
+    logger.info("分析完成!")
+
+
+def print_usage():
+    """打印使用说明"""
+    print("""
+Flask仓库分析器
+===============
+
+用法:
+    python main.py                  # 运行完整分析（使用缓存）
+    python main.py --fetch          # 采集所有GitHub数据
+    python main.py --fetch issues   # 只采集Issues
+    python main.py --fetch prs      # 只采集PRs
+    python main.py --fetch contributors  # 只采集贡献者
+    python main.py --no-cache       # 强制重新采集Git数据
+    python main.py --help           # 显示帮助
+""")
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        
+        if arg == "--help" or arg == "-h":
+            print_usage()
+        elif arg == "--fetch":
+            target = sys.argv[2] if len(sys.argv) > 2 else "all"
+            fetch_github_data(target)
+        elif arg == "--no-cache":
+            logger.info("强制重新采集...")
+            ensure_directories()
+            cache_file = DATA_DIR / "commits.json"
+            if cache_file.exists():
+                cache_file.unlink()
+            main()
+        else:
+            print(f"未知参数: {arg}")
+            print_usage()
+    else:
+        main()
+
