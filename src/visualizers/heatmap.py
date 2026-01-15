@@ -57,48 +57,119 @@ def plot_calendar_heatmap(
     dates: pd.Series, values: pd.Series, title: str, output_path: str
 ) -> None:
     """
-    Plot a calendar-like heatmap (e.g., commit activity by day of week and hour).
-
+    绘制日历热力图（按日期分布）
+    
     Args:
-        dates: Series of datetime objects (or things that can be converted).
-        values: Series of values corresponding to the dates.
-        title: Chart title.
-        output_path: Path to save the chart.
+        dates: 日期序列
+        values: 对应的数值序列
+        title: 图表标题
+        output_path: 保存路径
     """
-    # This function expects 'dates' to be processable into a pivot table
-    # For simplicity, let's assume 'dates' contains the timestamp and 'values' contains the count
-    # Or we can accept a pivot table directly.
-    # But to be flexible, let's assume we are receiving a pivot table ready for heatmap
-    # If the input is raw data, we need to process it.
-
-    # However, looking at the args, it seems better to keep it generic or accept a DataFrame.
-    # Let's assume the user passes a DataFrame that is already a pivot table (Hour x Weekday).
-
-    pass
-    # Actually, let's implement the specific logic for Hour x Weekday if that's what's typically needed
-    # or just use plot_heatmap if the data is already prepared.
-
-    # If the input is just dates and values, we might need to pivot it.
-    # Let's assume the caller prepares the data for now and uses plot_heatmap
-    # But if this is specifically "calendar", maybe it handles the pivoting.
-
-    # Re-reading requirements: "提交时间热力图（小时x星期）" is one of the charts.
-    # So let's make a specific function for that.
-
-    # Wait, the signature I defined takes dates and values.
-    # Let's change it to take a DataFrame for flexibility or perform the pivot here.
-    # Let's assume data is passed as a DataFrame where index is Weekday and columns are Hours.
-
-    pass
+    apply_style()
+    
+    # 创建日期-数值的DataFrame
+    df = pd.DataFrame({"date": pd.to_datetime(dates), "value": values})
+    df["weekday"] = df["date"].dt.day_name()
+    df["hour"] = df["date"].dt.hour
+    
+    # 按星期和小时分组统计
+    pivot = df.groupby(["weekday", "hour"])["value"].sum().unstack(fill_value=0)
+    
+    # 按正确的星期顺序排列
+    weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    pivot = pivot.reindex([w for w in weekday_order if w in pivot.index])
+    
+    plt.figure(figsize=(14, 6))
+    
+    sns.heatmap(
+        pivot,
+        cmap=get_cmap(),
+        linewidths=0.5,
+        annot=True,
+        fmt="g",
+        cbar_kws={"label": "活动数量"},
+    )
+    
+    plt.xlabel("小时")
+    plt.ylabel("星期")
+    
+    save_plot(output_path, title)
 
 
 def plot_activity_heatmap(data: pd.DataFrame, title: str, output_path: str) -> None:
     """
-    Plot activity heatmap (e.g. Hour x Weekday).
-
+    绘制活动热力图（小时 x 星期）
+    
     Args:
-        data: DataFrame with index as Weekday and columns as Hours (0-23).
-        title: Chart title.
-        output_path: Path to save the chart.
+        data: DataFrame，索引为星期，列为小时(0-23)
+        title: 图表标题
+        output_path: 保存路径
     """
-    plot_heatmap(data, title, "Hour of Day", "Day of Week", output_path)
+    apply_style()
+    
+    plt.figure(figsize=(14, 6))
+    
+    # 确保星期顺序正确
+    weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    if all(w in data.index for w in weekday_order):
+        data = data.reindex(weekday_order)
+    
+    sns.heatmap(
+        data,
+        cmap=get_cmap(),
+        linewidths=0.5,
+        annot=True,
+        fmt="g",
+        cbar_kws={"label": "提交数量"},
+    )
+    
+    plt.xlabel("小时")
+    plt.ylabel("星期")
+    
+    save_plot(output_path, title)
+
+
+def plot_contribution_heatmap(
+    commits_df: pd.DataFrame, 
+    title: str = "贡献者活动热力图",
+    output_path: str = None
+) -> None:
+    """
+    绘制贡献者活动热力图（作者 x 月份）
+    
+    Args:
+        commits_df: 包含author_name和date列的DataFrame
+        title: 图表标题
+        output_path: 保存路径
+    """
+    apply_style()
+    
+    df = commits_df.copy()
+    df["month"] = pd.to_datetime(df["date"]).dt.to_period("M").astype(str)
+    
+    # 按作者和月份统计
+    pivot = df.groupby(["author_name", "month"]).size().unstack(fill_value=0)
+    
+    # 只显示top 15贡献者
+    top_authors = df["author_name"].value_counts().head(15).index
+    pivot = pivot.loc[pivot.index.isin(top_authors)]
+    
+    # 只显示最近24个月
+    recent_months = sorted(pivot.columns)[-24:]
+    pivot = pivot[recent_months]
+    
+    plt.figure(figsize=(16, 10))
+    
+    sns.heatmap(
+        pivot,
+        cmap=get_cmap(),
+        linewidths=0.3,
+        cbar_kws={"label": "提交数量"},
+    )
+    
+    plt.xlabel("月份")
+    plt.ylabel("贡献者")
+    plt.xticks(rotation=45, ha="right")
+    
+    save_plot(output_path, title)
+
