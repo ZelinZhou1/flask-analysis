@@ -124,6 +124,32 @@ flask-analysis/
 | Pull Requests | 2,749 | pull_requests.json |
 | Contributors | 402 | contributors.json |
 
+### 数据示例
+
+**commits.json 结构：**
+```json
+{
+  "hash": "abc123...",
+  "msg": "feat: add new feature",
+  "author_name": "John Doe",
+  "author_email": "john@example.com",
+  "committer_date": "2024-01-15T10:30:00+00:00",
+  "insertions": 50,
+  "deletions": 10,
+  "files": 3
+}
+```
+
+**analysis_summary.json 示例：**
+```json
+{
+  "total_commits": 5474,
+  "total_authors": 402,
+  "date_range": "2010-04-06 ~ 2025-01-10"
+}
+```
+
+
 ## 📈 生成的27张图表
 
 ### Commits分析
