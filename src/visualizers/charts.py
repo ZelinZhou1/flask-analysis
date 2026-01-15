@@ -110,3 +110,119 @@ def plot_pie(
         plt.legend(patches, data.index, loc="best")
 
     save_plot(output_path, title)
+
+
+def plot_line(
+    data: pd.Series,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    output_path: str,
+    marker: str = "o",
+    color: str = None,
+) -> None:
+    """
+    绘制折线图
+    
+    Args:
+        data: 要绘制的数据
+        title: 图表标题
+        xlabel: X轴标签
+        ylabel: Y轴标签
+        output_path: 保存路径
+        marker: 标记样式
+        color: 线条颜色
+    """
+    apply_style()
+    
+    plt.figure(figsize=(12, 6))
+    
+    line_color = color or get_color("primary")
+    plt.plot(data.index, data.values, marker=marker, color=line_color, linewidth=2)
+    
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(rotation=45, ha="right")
+    plt.grid(True, alpha=0.3)
+    
+    save_plot(output_path, title)
+
+
+def plot_area(
+    data: pd.Series,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    output_path: str,
+    alpha: float = 0.7,
+) -> None:
+    """
+    绘制面积图
+    
+    Args:
+        data: 要绘制的数据
+        title: 图表标题
+        xlabel: X轴标签
+        ylabel: Y轴标签
+        output_path: 保存路径
+        alpha: 透明度
+    """
+    apply_style()
+    
+    plt.figure(figsize=(12, 6))
+    
+    plt.fill_between(
+        range(len(data)), 
+        data.values, 
+        color=get_color("primary"), 
+        alpha=alpha
+    )
+    plt.plot(data.values, color=get_color("dark"), linewidth=1.5)
+    
+    # 设置x轴标签
+    if len(data) <= 20:
+        plt.xticks(range(len(data)), data.index, rotation=45, ha="right")
+    else:
+        # 太多标签时只显示部分
+        step = len(data) // 10
+        indices = range(0, len(data), step)
+        plt.xticks(indices, [data.index[i] for i in indices], rotation=45, ha="right")
+    
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(True, alpha=0.3)
+    
+    save_plot(output_path, title)
+
+
+def plot_stacked_bar(
+    data: pd.DataFrame,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    output_path: str,
+) -> None:
+    """
+    绘制堆叠柱状图
+    
+    Args:
+        data: DataFrame，每列一个堆叠类别
+        title: 图表标题
+        xlabel: X轴标签
+        ylabel: Y轴标签
+        output_path: 保存路径
+    """
+    apply_style()
+    
+    plt.figure(figsize=(14, 8))
+    
+    colors = get_palette()
+    data.plot(kind="bar", stacked=True, color=colors[:len(data.columns)])
+    
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(rotation=45, ha="right")
+    plt.legend(title="类别", bbox_to_anchor=(1.02, 1), loc="upper left")
+    
+    save_plot(output_path, title)
+
