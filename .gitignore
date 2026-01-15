@@ -98,16 +98,16 @@ cover/
 # 项目特定
 # =====================
 
-# 生成的数据文件
-data/*.json
-data/*.csv
-data/*.pkl
+# 生成的数据文件 (注释掉以允许提交分析结果)
+# data/*.json
+# data/*.csv
+# data/*.pkl
 
-# 生成的图表输出
-output/*.png
-output/*.html
-output/*.svg
-output/*.pdf
+# 生成的图表输出 (注释掉以允许提交)
+# output/*.png
+# output/*.html
+# output/*.svg
+# output/*.pdf
 
 # 缓存目录
 .cache/

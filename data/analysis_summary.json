@@ -1,0 +1,41 @@
+{
+  "repo_stats": {
+    "files": 254,
+    "total_lines": 376193,
+    "total_code": 345905,
+    "total_size": 14351170,
+    "languages": {
+      ".rst": 78,
+      ".txt": 10,
+      ".toml": 5,
+      ".md": 6,
+      ".lock": 1,
+      ".json": 2,
+      ".sh": 1,
+      "": 12,
+      ".sample": 14,
+      ".idx": 1,
+      ".pack": 1,
+      ".rev": 1,
+      ".yml": 1,
+      ".yaml": 4,
+      ".py": 83,
+      ".bat": 1,
+      ".png": 5,
+      ".svg": 3,
+      ".html": 20,
+      ".sql": 2,
+      ".css": 2,
+      ".typed": 1
+    },
+    "avg_file_size": 56500.669291338585,
+    "max_file_size": 11660268
+  },
+  "complexity_stats": {
+    "total_complexity": 2696,
+    "total_functions": 923,
+    "files_analyzed": 83,
+    "average_complexity": 2.9209100758396533
+  },
+  "total_commits": 5474
+}
