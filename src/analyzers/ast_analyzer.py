@@ -1,9 +1,15 @@
 import ast
 import logging
 from typing import Dict, List, Any, Optional
-from radon.complexity import cc_visit, complexity_name
 
-# 配置日志记录器
+try:
+    from radon.complexity import cc_visit, cc_rank
+    RADON_AVAILABLE = True
+except ImportError:
+    cc_visit = None
+    cc_rank = None
+    RADON_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,19 +49,20 @@ class ASTAnalyzer:
         Returns:
             List[Dict]: 包含每个函数/方法的复杂度信息的列表
         """
+        if not RADON_AVAILABLE or cc_visit is None:
+            return []
         try:
-            # 使用 radon 访问 AST 并计算复杂度
             blocks = cc_visit(source_code)
             results = []
             for block in blocks:
                 results.append(
                     {
                         "name": block.name,
-                        "type": block.type,
+                        "type": getattr(block, 'type', 'unknown'),
                         "complexity": block.complexity,
-                        "rank": complexity_name(block.complexity),
+                        "rank": cc_rank(block.complexity) if cc_rank else 'N/A',
                         "lineno": block.lineno,
-                        "endline": block.endline,
+                        "endline": getattr(block, 'endline', block.lineno),
                     }
                 )
             return results
