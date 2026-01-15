@@ -1,309 +1,102 @@
 # -*- coding: utf-8 -*-
 """
 数据持久化模块
-提供JSON、CSV等格式的数据读写功能
+提供JSON和CSV的保存和加载功能
 """
 
-import csv
 import json
+import csv
+import shutil
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class DateTimeEncoder(json.JSONEncoder):
-    """处理datetime对象的JSON编码器"""
-
-    def default(self, o: Any) -> Any:
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return super().default(o)
-
-
-def save_json(
-    data: Any, file_path: Union[str, Path], indent: int = 2, ensure_ascii: bool = False
-) -> bool:
-    """
-    保存数据到JSON文件
-
-    Args:
-        data: 要保存的数据
-        file_path: 文件路径
-        indent: 缩进空格数
-        ensure_ascii: 是否转义非ASCII字符
-
-    Returns:
-        是否成功
-    """
-    file_path = Path(file_path)
-
+def save_json(data: Any, filepath: str, indent: int = 2) -> bool:
+    """保存数据到JSON文件"""
     try:
-        # 确保目录存在
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(
-                data, f, indent=indent, ensure_ascii=ensure_ascii, cls=DateTimeEncoder
-            )
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=indent, default=str)
+        
+        logger.debug(f"已保存JSON: {filepath}")
         return True
-
     except Exception as e:
-        print(f"保存JSON失败: {file_path}, 错误: {e}")
+        logger.error(f"保存JSON失败: {e}")
         return False
 
 
-def load_json(file_path: Union[str, Path], default: Any = None) -> Any:
-    """
-    从JSON文件加载数据
-
-    Args:
-        file_path: 文件路径
-        default: 文件不存在或解析失败时的默认值
-
-    Returns:
-        加载的数据或默认值
-    """
-    file_path = Path(file_path)
-
-    if not file_path.exists():
-        return default
-
+def load_json(filepath: str) -> Optional[Any]:
+    """从JSON文件加载数据"""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        path = Path(filepath)
+        if not path.exists():
+            return None
+        
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"加载JSON失败: {file_path}, 错误: {e}")
-        return default
+        logger.error(f"加载JSON失败: {e}")
+        return None
 
 
-def save_csv(
-    data: List[Dict[str, Any]],
-    file_path: Union[str, Path],
-    fieldnames: Optional[List[str]] = None,
-) -> bool:
-    """
-    保存数据到CSV文件
-
-    Args:
-        data: 字典列表
-        file_path: 文件路径
-        fieldnames: 列名列表，None则自动从第一行数据获取
-
-    Returns:
-        是否成功
-    """
-    file_path = Path(file_path)
-
-    if not data:
-        print("警告: 数据为空，跳过保存")
-        return False
-
+def save_csv(data: List[Dict], filepath: str, fieldnames: Optional[List[str]] = None) -> bool:
+    """保存数据到CSV文件"""
     try:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
+        if not data:
+            return False
+        
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
         if fieldnames is None:
             fieldnames = list(data[0].keys())
-
-        with open(file_path, "w", encoding="utf-8-sig", newline="") as f:
+        
+        with open(path, "w", encoding="utf-8-sig", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(data)
-
+        
+        logger.debug(f"已保存CSV: {filepath}")
         return True
-
     except Exception as e:
-        print(f"保存CSV失败: {file_path}, 错误: {e}")
+        logger.error(f"保存CSV失败: {e}")
         return False
 
 
-def load_csv(
-    file_path: Union[str, Path], default: Optional[List[Dict[str, Any]]] = None
-) -> List[Dict[str, Any]]:
-    """
-    从CSV文件加载数据
-
-    Args:
-        file_path: 文件路径
-        default: 文件不存在时的默认值
-
-    Returns:
-        字典列表
-    """
-    file_path = Path(file_path)
-
-    if default is None:
-        default = []
-
-    if not file_path.exists():
-        return default
-
+def load_csv(filepath: str) -> Optional[List[Dict]]:
+    """从CSV文件加载数据"""
     try:
-        with open(file_path, "r", encoding="utf-8-sig", newline="") as f:
+        path = Path(filepath)
+        if not path.exists():
+            return None
+        
+        with open(path, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             return list(reader)
     except Exception as e:
-        print(f"加载CSV失败: {file_path}, 错误: {e}")
-        return default
+        logger.error(f"加载CSV失败: {e}")
+        return None
 
 
-def save_text(
-    content: str, file_path: Union[str, Path], encoding: str = "utf-8"
-) -> bool:
-    """
-    保存文本到文件
-
-    Args:
-        content: 文本内容
-        file_path: 文件路径
-        encoding: 编码
-
-    Returns:
-        是否成功
-    """
-    file_path = Path(file_path)
-
+def backup_file(filepath: str) -> Optional[str]:
+    """备份文件"""
     try:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(file_path, "w", encoding=encoding) as f:
-            f.write(content)
-        return True
-
-    except Exception as e:
-        print(f"保存文本失败: {file_path}, 错误: {e}")
-        return False
-
-
-def load_text(
-    file_path: Union[str, Path], default: str = "", encoding: str = "utf-8"
-) -> str:
-    """
-    从文件加载文本
-
-    Args:
-        file_path: 文件路径
-        default: 文件不存在时的默认值
-        encoding: 编码
-
-    Returns:
-        文本内容
-    """
-    file_path = Path(file_path)
-
-    if not file_path.exists():
-        return default
-
-    try:
-        with open(file_path, "r", encoding=encoding) as f:
-            return f.read()
-    except Exception as e:
-        print(f"加载文本失败: {file_path}, 错误: {e}")
-        return default
-
-
-def append_jsonl(record: Dict[str, Any], file_path: Union[str, Path]) -> bool:
-    """
-    追加记录到JSONL文件（每行一个JSON对象）
-
-    Args:
-        record: 要追加的记录
-        file_path: 文件路径
-
-    Returns:
-        是否成功
-    """
-    file_path = Path(file_path)
-
-    try:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(file_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False, cls=DateTimeEncoder))
-            f.write("\n")
-        return True
-
-    except Exception as e:
-        print(f"追加JSONL失败: {file_path}, 错误: {e}")
-        return False
-
-
-def load_jsonl(
-    file_path: Union[str, Path], default: Optional[List[Dict[str, Any]]] = None
-) -> List[Dict[str, Any]]:
-    """
-    从JSONL文件加载数据
-
-    Args:
-        file_path: 文件路径
-        default: 文件不存在时的默认值
-
-    Returns:
-        字典列表
-    """
-    file_path = Path(file_path)
-
-    if default is None:
-        default = []
-
-    if not file_path.exists():
-        return default
-
-    records = []
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    records.append(json.loads(line))
-        return records
-
-    except Exception as e:
-        print(f"加载JSONL失败: {file_path}, 错误: {e}")
-        return default
-
-
-def file_exists(file_path: Union[str, Path]) -> bool:
-    """检查文件是否存在"""
-    return Path(file_path).exists()
-
-
-def get_file_size(file_path: Union[str, Path]) -> int:
-    """获取文件大小（字节）"""
-    path = Path(file_path)
-    if path.exists():
-        return path.stat().st_size
-    return 0
-
-
-import shutil
-
-
-def backup_file(file_path: Union[str, Path]) -> bool:
-    """
-    备份文件（添加.bak后缀）
-
-    Args:
-        file_path: 原文件路径
-
-    Returns:
-        是否备份成功
-    """
-    path = Path(file_path)
-    if not path.exists():
-        return False
-
-    backup_path = path.with_suffix(path.suffix + ".bak")
-    try:
+        path = Path(filepath)
+        if not path.exists():
+            return None
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = path.with_suffix(f".{timestamp}{path.suffix}")
         shutil.copy2(path, backup_path)
-        return True
+        
+        logger.debug(f"已备份: {backup_path}")
+        return str(backup_path)
     except Exception as e:
-        print(f"备份失败: {file_path}, 错误: {e}")
-        return False
-
-
-def get_file_mtime(file_path: Union[str, Path]) -> Optional[datetime]:
-    """获取文件修改时间"""
-    path = Path(file_path)
-    if path.exists():
-        return datetime.fromtimestamp(path.stat().st_mtime)
-    return None
+        logger.error(f"备份失败: {e}")
+        return None
