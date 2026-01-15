@@ -105,6 +105,8 @@ flask-analysis/
 │   │   ├── heatmap.py              # 热力图
 │   │   ├── wordcloud_chart.py      # 词云
 │   │   ├── charts_3d.py            # 3D图表
+│   │   ├── issues_charts.py        # Issues图表
+│   │   ├── pr_charts.py            # PRs图表
 │   │   └── ...
 │   └── utils/              # 工具模块
 ├── data/                   # 采集的数据
@@ -113,20 +115,55 @@ flask-analysis/
 └── docs/                   # 文档
 ```
 
-## 📈 输出示例
+## 📊 数据统计
 
-### 生成的图表类型
+| 数据类型 | 数量 | 文件 |
+|----------|------|------|
+| Commits | 5,474 | commits.json |
+| Issues | 2,424 | issues.json |
+| Pull Requests | 2,749 | pull_requests.json |
+| Contributors | 402 | contributors.json |
 
-| 类别 | 图表 |
-|------|------|
-| 提交分析 | 年度统计、月度趋势、时间热力图、累积曲线 |
-| 作者分析 | Top贡献者、贡献占比、活跃时间线 |
-| 代码分析 | 文件类型、复杂度排行、依赖关系 |
-| Issues分析 | 状态分布、时间线、标签云 |
-| PRs分析 | 状态分布、合并时间、作者排行 |
-| 其他 | 词云、3D图表、年度对比 |
+## 📈 生成的27张图表
 
-### 配色方案
+### Commits分析
+- commits_by_year.png - 年度提交统计
+- commits_by_weekday.png - 星期提交分布
+- commits_by_hour.png - 小时提交分布
+- monthly_trend.png - 月度趋势
+- cumulative.png - 累积提交曲线
+- yearly_comparison.png - 年度对比
+- commit_types.png - 提交类型分布
+- wordcloud.png - 提交消息词云
+
+### 热力图与3D
+- commit_heatmap.png - 时间热力图
+- yearly_heatmap.png - 年度热力图
+- author_heatmap.png - 贡献者活动热力图
+- commits_3d.png - 3D提交分布
+- author_3d.png - 3D贡献者活动
+
+### 贡献者分析
+- top_authors.png - Top20贡献者
+- authors_pie.png - 贡献占比
+- top_contributors.png - 贡献者排行
+- contributions_pie.png - 贡献分布
+- contributors_timeline.png - 活跃时间线
+- new_contributors.png - 新贡献者趋势
+
+### Issues分析
+- issues_state.png - Issues状态分布
+- issues_timeline.png - Issues时间线
+- issues_labels.png - 标签分布
+- top_issue_authors.png - Issues作者排行
+
+### PRs分析
+- pr_state.png - PRs状态分布
+- pr_timeline.png - PRs时间线
+- pr_merge_time.png - 合并时间分布
+- top_pr_authors.png - PRs作者排行
+
+## 🎨 配色方案
 
 本项目采用**暖色系**（Warm Colors）配色方案：
 - 主色：`#FF6B35` (橙红)
@@ -138,7 +175,12 @@ flask-analysis/
 | 成员 | 负责模块 |
 |------|----------|
 | ZelinZhou1 | 架构设计、主程序 |
-| DUT-Abstracter | 数据采集、API |
+| DUT-Abstracter | 数据采集、GitHub API |
 | lff20041215 | 可视化图表 |
 | liujianqi258 | 分析器模块 |
 | sasageiyou | 测试与优化 |
+
+## 📄 许可证
+
+MIT License
+
