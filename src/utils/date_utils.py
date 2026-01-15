@@ -1,297 +1,156 @@
 # -*- coding: utf-8 -*-
 """
-日期处理工具模块
-提供日期解析、格式化和提取等功能，用于时间维度的数据分析
+日期时间工具模块
+提供日期解析、格式化和范围计算功能
 """
-
-from datetime import datetime, timezone
-from typing import Optional, Union
-
-# 星期名称映射（中文）
-WEEKDAY_NAMES_CN = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-
-# 星期名称映射（英文）
-WEEKDAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-
-# 月份名称映射（中文）
-MONTH_NAMES_CN = [
-    "一月",
-    "二月",
-    "三月",
-    "四月",
-    "五月",
-    "六月",
-    "七月",
-    "八月",
-    "九月",
-    "十月",
-    "十一月",
-    "十二月",
-]
+from datetime import datetime, timedelta
+from typing import Optional, List, Tuple
+import pandas as pd
 
 
-def parse_date(date_input: Union[str, datetime, None]) -> Optional[datetime]:
+def parse_date(date_str: str) -> Optional[datetime]:
     """
-    解析日期字符串为datetime对象
-
+    解析日期字符串
+    
     Args:
-        date_input: 日期字符串、datetime对象或None
-
+        date_str: 日期字符串
+        
     Returns:
-        datetime对象，解析失败返回None
+        datetime对象
     """
-    if date_input is None:
-        return None
-
-    if isinstance(date_input, datetime):
-        return date_input
-
-    # 尝试多种常见日期格式
     formats = [
+        "%Y-%m-%d %H:%M:%S%z",
         "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%dT%H:%M:%SZ",
         "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%SZ",
         "%Y-%m-%d",
-        "%Y/%m/%d",
-        "%d-%m-%Y",
-        "%d/%m/%Y",
     ]
-
+    
     for fmt in formats:
         try:
-            return datetime.strptime(date_input, fmt)
+            return datetime.strptime(str(date_str).split("+")[0].split("Z")[0], fmt.replace("%z", ""))
         except ValueError:
             continue
-
-    return None
-
-
-def get_year_month(date_input: Union[str, datetime]) -> Optional[str]:
-    """
-    获取年月字符串，格式为 YYYY-MM
-
-    Args:
-        date_input: 日期输入
-
-    Returns:
-        年月字符串，如 '2024-01'
-    """
-    dt = parse_date(date_input)
-    if dt is None:
-        return None
-    return dt.strftime("%Y-%m")
-
-
-def get_year(date_input: Union[str, datetime]) -> Optional[int]:
-    """
-    提取年份
-
-    Args:
-        date_input: 日期输入
-
-    Returns:
-        年份整数
-    """
-    dt = parse_date(date_input)
-    if dt is None:
-        return None
-    return dt.year
-
-
-def get_month(date_input: Union[str, datetime]) -> Optional[int]:
-    """
-    提取月份（1-12）
-
-    Args:
-        date_input: 日期输入
-
-    Returns:
-        月份整数
-    """
-    dt = parse_date(date_input)
-    if dt is None:
-        return None
-    return dt.month
-
-
-def get_weekday(date_input: Union[str, datetime]) -> Optional[int]:
-    """
-    获取星期几（0=周一, 6=周日）
-
-    Args:
-        date_input: 日期输入
-
-    Returns:
-        星期索引
-    """
-    dt = parse_date(date_input)
-    if dt is None:
-        return None
-    return dt.weekday()
-
-
-def get_hour(date_input: Union[str, datetime]) -> Optional[int]:
-    """
-    提取小时（0-23）
-
-    Args:
-        date_input: 日期输入
-
-    Returns:
-        小时整数
-    """
-    dt = parse_date(date_input)
-    if dt is None:
-        return None
-    return dt.hour
-
-
-def get_weekday_name(
-    date_input: Union[str, datetime], lang: str = "cn"
-) -> Optional[str]:
-    """
-    获取星期名称
-
-    Args:
-        date_input: 日期输入
-        lang: 语言，'cn'为中文，'en'为英文
-
-    Returns:
-        星期名称
-    """
-    weekday = get_weekday(date_input)
-    if weekday is None:
+    
+    # 尝试pandas解析
+    try:
+        return pd.to_datetime(date_str).to_pydatetime()
+    except:
         return None
 
-    names = WEEKDAY_NAMES_CN if lang == "cn" else WEEKDAY_NAMES_EN
-    return names[weekday]
 
-
-def get_month_name(date_input: Union[str, datetime], lang: str = "cn") -> Optional[str]:
+def get_date_range(start: datetime, end: datetime) -> List[datetime]:
     """
-    获取月份名称
-
-    Args:
-        date_input: 日期输入
-        lang: 语言，'cn'为中文
-
-    Returns:
-        月份名称
-    """
-    month = get_month(date_input)
-    if month is None:
-        return None
-
-    if lang == "cn":
-        return MONTH_NAMES_CN[month - 1]
-    return datetime(2000, month, 1).strftime("%B")
-
-
-def format_date(
-    date_input: Union[str, datetime], fmt: str = "%Y-%m-%d"
-) -> Optional[str]:
-    """
-    格式化日期
-
-    Args:
-        date_input: 日期输入
-        fmt: 输出格式
-
-    Returns:
-        格式化后的日期字符串
-    """
-    dt = parse_date(date_input)
-    if dt is None:
-        return None
-    return dt.strftime(fmt)
-
-
-def get_date_range_days(
-    start: Union[str, datetime], end: Union[str, datetime]
-) -> Optional[int]:
-    """
-    计算两个日期之间的天数差
-
+    获取日期范围内的所有日期
+    
     Args:
         start: 开始日期
         end: 结束日期
-
+        
     Returns:
-        天数差
+        日期列表
     """
-    start_dt = parse_date(start)
-    end_dt = parse_date(end)
+    dates = []
+    current = start
+    while current <= end:
+        dates.append(current)
+        current += timedelta(days=1)
+    return dates
 
-    if start_dt is None or end_dt is None:
-        return None
 
-    return (end_dt - start_dt).days
-
-
-def is_weekend(date_input: Union[str, datetime]) -> Optional[bool]:
+def get_week_boundaries(date: datetime) -> Tuple[datetime, datetime]:
     """
-    判断是否为周末
-
+    获取给定日期所在周的起止日期
+    
     Args:
-        date_input: 日期输入
-
+        date: 日期
+        
     Returns:
-        是否为周末
+        (周一, 周日)
     """
-    weekday = get_weekday(date_input)
-    if weekday is None:
-        return None
-    return weekday >= 5
+    monday = date - timedelta(days=date.weekday())
+    sunday = monday + timedelta(days=6)
+    return monday, sunday
 
 
-def is_business_day(date_input: Union[str, datetime]) -> Optional[bool]:
+def get_month_boundaries(date: datetime) -> Tuple[datetime, datetime]:
     """
-    判断是否为工作日
-
+    获取给定日期所在月的起止日期
+    
     Args:
-        date_input: 日期输入
-
+        date: 日期
+        
     Returns:
-        是否为工作日
+        (月初, 月末)
     """
-    weekend = is_weekend(date_input)
-    if weekend is None:
-        return None
-    return not weekend
+    first_day = date.replace(day=1)
+    if date.month == 12:
+        last_day = date.replace(month=12, day=31)
+    else:
+        last_day = date.replace(month=date.month + 1, day=1) - timedelta(days=1)
+    return first_day, last_day
 
 
-def get_quarter(date_input: Union[str, datetime]) -> Optional[int]:
+def format_date(date: datetime, fmt: str = "%Y-%m-%d") -> str:
     """
-    获取季度（1-4）
-
+    格式化日期
+    
     Args:
-        date_input: 日期输入
-
+        date: datetime对象
+        fmt: 格式字符串
+        
     Returns:
-        季度
+        格式化后的字符串
     """
-    month = get_month(date_input)
-    if month is None:
-        return None
-    return (month - 1) // 3 + 1
+    return date.strftime(fmt)
 
 
-def now_utc() -> datetime:
+def get_year_month(date: datetime) -> str:
+    """获取年月字符串 (YYYY-MM)"""
+    return date.strftime("%Y-%m")
+
+
+def get_weekday_name(date: datetime) -> str:
+    """获取星期名称"""
+    return date.strftime("%A")
+
+
+def days_between(date1: datetime, date2: datetime) -> int:
+    """计算两个日期之间的天数"""
+    return abs((date2 - date1).days)
+
+
+def is_weekend(date: datetime) -> bool:
+    """判断是否为周末"""
+    return date.weekday() >= 5
+
+
+def group_by_period(dates: List[datetime], period: str = "month") -> dict:
     """
-    获取当前UTC时间
-
+    按时间段分组
+    
+    Args:
+        dates: 日期列表
+        period: 分组周期 ("day", "week", "month", "year")
+        
     Returns:
-        UTC datetime对象
+        分组字典 {period_key: count}
     """
-    return datetime.now(timezone.utc)
-
-
-def now_local() -> datetime:
-    """
-    获取当前本地时间
-
-    Returns:
-        本地 datetime对象
-    """
-    return datetime.now()
+    groups = {}
+    
+    for date in dates:
+        if period == "day":
+            key = format_date(date)
+        elif period == "week":
+            monday, _ = get_week_boundaries(date)
+            key = format_date(monday)
+        elif period == "month":
+            key = get_year_month(date)
+        elif period == "year":
+            key = str(date.year)
+        else:
+            key = format_date(date)
+        
+        groups[key] = groups.get(key, 0) + 1
+    
+    return groups
