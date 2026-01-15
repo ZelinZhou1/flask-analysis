@@ -142,7 +142,3 @@ flask-analysis/
 | lff20041215 | 可视化图表 |
 | liujianqi258 | 分析器模块 |
 | sasageiyou | 测试与优化 |
-
-## 📄 许可证
-
-MIT License

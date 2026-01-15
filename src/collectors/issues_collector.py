@@ -2,6 +2,7 @@
 """
 Issues数据采集模块
 从GitHub API获取仓库的所有Issues数据
+支持断点续传
 """
 
 import requests
@@ -13,22 +14,36 @@ from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
+PROGRESS_FILE = "data/.fetch_progress.json"
+
+
+def load_progress() -> Dict:
+    """加载采集进度"""
+    try:
+        if Path(PROGRESS_FILE).exists():
+            with open(PROGRESS_FILE, "r") as f:
+                return json.load(f)
+    except:
+        pass
+    return {}
+
+
+def save_progress(progress: Dict):
+    """保存采集进度"""
+    Path(PROGRESS_FILE).parent.mkdir(parents=True, exist_ok=True)
+    with open(PROGRESS_FILE, "w") as f:
+        json.dump(progress, f)
+
 
 class IssuesCollector:
     """
     GitHub Issues采集器
+    支持断点续传
     """
     
     BASE_URL = "https://api.github.com"
     
     def __init__(self, repo: str, token: Optional[str] = None):
-        """
-        初始化Issues采集器
-        
-        Args:
-            repo: 仓库名称，格式为 "owner/repo"
-            token: GitHub Personal Access Token
-        """
         self.repo = repo
         self.headers = {
             "Accept": "application/vnd.github.v3+json",
@@ -45,8 +60,11 @@ class IssuesCollector:
             resp = requests.get(url, headers=self.headers, params=params, timeout=30)
             
             if resp.status_code == 403:
-                logger.warning("API速率限制，等待60秒...")
-                time.sleep(60)
+                reset_time = int(resp.headers.get("X-RateLimit-Reset", 0))
+                wait_time = max(reset_time - int(time.time()), 60)
+                wait_time = min(wait_time, 300)
+                logger.warning(f"API速率限制，等待{wait_time}秒...")
+                time.sleep(wait_time)
                 return self._request(endpoint, params)
             
             resp.raise_for_status()
@@ -56,19 +74,23 @@ class IssuesCollector:
             logger.error(f"API请求失败: {e}")
             return None
     
-    def collect_issues(self, state: str = "all", max_pages: int = 20) -> List[Dict]:
+    def collect_issues(self, state: str = "all", max_pages: int = 50, resume: bool = True) -> List[Dict]:
         """
-        采集Issues
-        
-        Args:
-            state: 状态筛选 ("open", "closed", "all")
-            max_pages: 最大页数
-            
-        Returns:
-            Issues列表
+        采集Issues（支持断点续传）
         """
+        progress = load_progress() if resume else {}
+        start_page = progress.get("issues_page", 1)
         all_issues = []
-        page = 1
+        
+        if resume and Path("data/issues_partial.json").exists():
+            try:
+                with open("data/issues_partial.json", "r", encoding="utf-8") as f:
+                    all_issues = json.load(f)
+                logger.info(f"从断点恢复，已有{len(all_issues)}个Issues，从第{start_page}页继续")
+            except:
+                pass
+        
+        page = start_page
         
         while page <= max_pages:
             logger.info(f"采集Issues第{page}页...")
@@ -87,30 +109,44 @@ class IssuesCollector:
             if not data:
                 break
             
-            # 过滤掉PRs（Issues API会包含PRs）
             issues_only = [i for i in data if "pull_request" not in i]
             all_issues.extend(issues_only)
+            
+            progress["issues_page"] = page + 1
+            save_progress(progress)
+            
+            if page % 10 == 0:
+                self.save_to_json(all_issues, "data/issues_partial.json")
             
             if len(data) < 100:
                 break
             page += 1
         
+        if Path("data/issues_partial.json").exists():
+            Path("data/issues_partial.json").unlink()
+        progress.pop("issues_page", None)
+        save_progress(progress)
+        
         logger.info(f"共采集{len(all_issues)}个Issues")
         return all_issues
     
-    def collect_prs(self, state: str = "all", max_pages: int = 20) -> List[Dict]:
+    def collect_prs(self, state: str = "all", max_pages: int = 50, resume: bool = True) -> List[Dict]:
         """
-        采集Pull Requests
-        
-        Args:
-            state: 状态筛选 ("open", "closed", "all")
-            max_pages: 最大页数
-            
-        Returns:
-            PRs列表
+        采集Pull Requests（支持断点续传）
         """
+        progress = load_progress() if resume else {}
+        start_page = progress.get("prs_page", 1)
         all_prs = []
-        page = 1
+        
+        if resume and Path("data/prs_partial.json").exists():
+            try:
+                with open("data/prs_partial.json", "r", encoding="utf-8") as f:
+                    all_prs = json.load(f)
+                logger.info(f"从断点恢复，已有{len(all_prs)}个PRs，从第{start_page}页继续")
+            except:
+                pass
+        
+        page = start_page
         
         while page <= max_pages:
             logger.info(f"采集PRs第{page}页...")
@@ -129,20 +165,26 @@ class IssuesCollector:
             
             all_prs.extend(data)
             
+            progress["prs_page"] = page + 1
+            save_progress(progress)
+            
+            if page % 10 == 0:
+                self.save_to_json(all_prs, "data/prs_partial.json")
+            
             if len(data) < 100:
                 break
             page += 1
         
+        if Path("data/prs_partial.json").exists():
+            Path("data/prs_partial.json").unlink()
+        progress.pop("prs_page", None)
+        save_progress(progress)
+        
         logger.info(f"共采集{len(all_prs)}个PRs")
         return all_prs
     
-    def collect_contributors(self, max_pages: int = 10) -> List[Dict]:
-        """
-        采集贡献者
-        
-        Returns:
-            贡献者列表
-        """
+    def collect_contributors(self, max_pages: int = 20) -> List[Dict]:
+        """采集贡献者"""
         all_contributors = []
         page = 1
         
