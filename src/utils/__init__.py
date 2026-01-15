@@ -6,10 +6,10 @@
 
 from .font_config import configure_chinese_font, get_chinese_font
 from .helpers import truncate_label, safe_divide, format_number, ensure_dir
-from .date_utils import parse_date, get_year, get_month, get_weekday, get_hour
-from .cache import CacheManager
+from .date_utils import parse_date, get_year_month, get_weekday_name, format_date
+from .cache_manager import CacheManager
 from .persistence import save_json, load_json, save_csv, load_csv, backup_file
-from .file_scanner import FileScanner
+from .exporter import export_to_json, export_to_csv, export_to_markdown
 
 __all__ = [
     "configure_chinese_font",
@@ -19,15 +19,17 @@ __all__ = [
     "format_number",
     "ensure_dir",
     "parse_date",
-    "get_year",
-    "get_month",
-    "get_weekday",
-    "get_hour",
+    "get_year_month",
+    "get_weekday_name",
+    "format_date",
     "CacheManager",
     "save_json",
     "load_json",
     "save_csv",
     "load_csv",
     "backup_file",
-    "FileScanner",
+    "export_to_json",
+    "export_to_csv",
+    "export_to_markdown",
 ]
+
