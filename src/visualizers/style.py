@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Style module
-Provides functions to apply the warm color scheme and chart styles.
+样式模块
+提供暖色系配色和图表样式配置
 """
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
 from typing import Dict, List, Any, Optional
+from pathlib import Path
 
 from src.config import (
     WARM_COLORS,
@@ -16,82 +18,78 @@ from src.config import (
     FIGURE_SIZE,
     FIGURE_DPI,
 )
-from src.utils.font_config import configure_chinese_font
+
+_style_configured = False
 
 
 def apply_style() -> None:
     """
-    Apply the project's visual style to matplotlib and seaborn.
-    Sets the color palette, font, and other plot configurations.
+    应用项目的视觉样式到matplotlib和seaborn
     """
-    # Configure Chinese font support
-    configure_chinese_font()
-
-    # Apply matplotlib style settings
+    global _style_configured
+    
+    if _style_configured:
+        return
+    
+    warnings.filterwarnings('ignore', category=UserWarning)
+    
+    font_path = Path("C:/Windows/Fonts/msyh.ttc")
+    if font_path.exists():
+        import matplotlib.font_manager as fm
+        try:
+            fm.fontManager.addfont(str(font_path))
+        except:
+            pass
+    
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'DejaVu Sans']
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['axes.unicode_minus'] = False
+    
     for key, value in CHART_STYLE.items():
-        plt.rcParams[key] = value
+        try:
+            plt.rcParams[key] = value
+        except:
+            pass
 
-    # Set default figure size and DPI
     plt.rcParams["figure.figsize"] = FIGURE_SIZE
     plt.rcParams["figure.dpi"] = FIGURE_DPI
 
-    # Apply seaborn style
     sns.set_theme(style="whitegrid", palette=WARM_PALETTE)
 
-    # Re-apply custom rcParams because seaborn might overwrite some
-    plt.rcParams.update(CHART_STYLE)
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
+    
+    _style_configured = True
 
 
 def get_color(name: str) -> str:
-    """
-    Get a specific color from the warm color scheme.
-
-    Args:
-        name: The name of the color ('primary', 'secondary', 'tertiary', 'background', 'accent', 'dark').
-
-    Returns:
-        The hex color code.
-    """
+    """获取指定颜色"""
     return WARM_COLORS.get(name, WARM_COLORS["primary"])
 
 
 def get_palette() -> List[str]:
-    """
-    Get the warm color palette list.
-
-    Returns:
-        List of hex color codes.
-    """
+    """获取暖色系调色板"""
     return WARM_PALETTE
 
 
 def get_cmap() -> Any:
-    """
-    Get the warm colormap for heatmaps.
-
-    Returns:
-        The LinearSegmentedColormap object.
-    """
+    """获取暖色系colormap"""
     return WARM_CMAP
 
 
 def save_plot(filename: str, title: Optional[str] = None) -> None:
     """
-    Helper to save the current plot with consistent settings.
-
-    Args:
-        filename: Path to save the file.
-        title: Optional title for the plot.
+    保存图表
     """
+    import os
+    
     if title:
         plt.title(
-            title, pad=20, fontsize=16, fontweight="bold", color=WARM_COLORS["dark"]
+            title, pad=20, fontsize=14, fontweight="bold", color=WARM_COLORS["dark"]
         )
 
     plt.tight_layout()
-    # Ensure the directory exists
-    import os
-
+    
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
     plt.savefig(
