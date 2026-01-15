@@ -102,7 +102,8 @@ def analyze_stats(commits):
     # Process commit data for visualization
     df = pd.DataFrame(commits)
     if not df.empty:
-        df["date"] = pd.to_datetime(df["committer_date"])
+        # 修复时区感知日期转换问题
+        df["date"] = pd.to_datetime(df["committer_date"], utc=True)
         df["year"] = df["date"].dt.year
         df["month"] = df["date"].dt.to_period("M").astype(str)
         df["hour"] = df["date"].dt.hour
