@@ -40,17 +40,19 @@ def plot_bar(
 
     plt.figure()
 
+    colors = get_palette()
     if horizontal:
-        sns.barplot(x=data.values, y=data.index, palette=get_palette())
-        plt.xlabel(ylabel)  # Swap labels for horizontal
+        plt.barh(data.index, data.values, color=colors[:len(data)])
+        plt.xlabel(ylabel)
         plt.ylabel(xlabel)
     else:
-        sns.barplot(x=data.index, y=data.values, palette=get_palette())
+        plt.bar(data.index, data.values, color=colors[:len(data)])
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.xticks(rotation=45, ha="right")
 
     save_plot(output_path, title)
+
 
 
 def plot_horizontal_bar(
