@@ -1,140 +1,144 @@
-# src/analyzers/dependency_analyzer.py
+# -*- coding: utf-8 -*-
+"""
+依赖关系分析器
+分析Python项目的模块依赖关系
+"""
 import ast
 import os
+import logging
 from pathlib import Path
-from typing import Dict, List, Set, Any, Tuple
-import networkx as nx
+from typing import Dict, List, Set, Tuple
+from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 
 class DependencyAnalyzer:
     """
-    依赖关系分析器
-    使用NetworkX构建项目内部文件之间的依赖关系图
+    项目依赖关系分析器
+    分析import语句构建依赖图
     """
-
-    def __init__(self, repo_path: str):
+    
+    def __init__(self, project_path: str):
         """
-        初始化依赖分析器
-
+        初始化分析器
+        
         Args:
-            repo_path: 仓库根目录路径
+            project_path: 项目根目录路径
         """
-        self.repo_path = Path(repo_path)
-        self.graph = nx.DiGraph()
-
-    def analyze(self) -> nx.DiGraph:
+        self.project_path = Path(project_path)
+        self.dependencies: Dict[str, Set[str]] = defaultdict(set)
+        self.external_deps: Set[str] = set()
+        self.internal_deps: Dict[str, Set[str]] = defaultdict(set)
+    
+    def analyze_file(self, file_path: str) -> Dict[str, List[str]]:
         """
-        分析项目依赖关系
-
-        Returns:
-            NetworkX有向图，节点为文件相对路径，边表示导入关系
-        """
-        self.graph.clear()
-        python_files = self._get_python_files()
-
-        # 添加所有节点
-        for file_path in python_files:
-            rel_path = self._get_rel_path(file_path)
-            self.graph.add_node(rel_path, size=os.path.getsize(file_path))
-
-        # 分析导入构建边
-        for file_path in python_files:
-            source_node = self._get_rel_path(file_path)
-            imports = self._get_imports(file_path)
-
-            for module_name in imports:
-                target_node = self._resolve_import(module_name, file_path)
-                if target_node and self.graph.has_node(target_node):
-                    self.graph.add_edge(source_node, target_node)
-
-        return self.graph
-
-    def get_stats(self) -> Dict[str, Any]:
-        """
-        获取依赖图的统计信息
-
-        Returns:
-            包含节点数、边数、密度、中心性等信息的字典
-        """
-        if not self.graph.nodes:
-            self.analyze()
-
-        try:
-            stats = {
-                "node_count": self.graph.number_of_nodes(),
-                "edge_count": self.graph.number_of_edges(),
-                "density": nx.density(self.graph),
-                "avg_degree": sum(d for n, d in self.graph.degree())
-                / float(self.graph.number_of_nodes())
-                if self.graph.number_of_nodes() > 0
-                else 0,
-                "top_centrality": sorted(
-                    nx.degree_centrality(self.graph).items(),
-                    key=lambda x: x[1],
-                    reverse=True,
-                )[:5],
-            }
-        except Exception as e:
-            stats = {"error": str(e)}
-
-        return stats
-
-    def _get_python_files(self) -> List[Path]:
-        """获取所有Python文件"""
-        return list(self.repo_path.rglob("*.py"))
-
-    def _get_rel_path(self, path: Path) -> str:
-        """获取相对路径（作为节点ID）"""
-        return str(path.relative_to(self.repo_path)).replace(os.sep, "/")
-
-    def _get_imports(self, file_path: Path) -> Set[str]:
-        """
-        解析文件获取导入的模块名
-
+        分析单个文件的导入依赖
+        
         Args:
-            file_path: Python文件路径
-
+            file_path: 文件路径
+            
         Returns:
-            导入的模块名集合
+            导入信息字典
         """
-        imports = set()
+        result = {
+            "imports": [],
+            "from_imports": [],
+            "external": [],
+            "internal": []
+        }
+        
         try:
             with open(file_path, "r", encoding="utf-8") as f:
-                tree = ast.parse(f.read(), filename=str(file_path))
-
+                code = f.read()
+            
+            tree = ast.parse(code)
+            
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
-                        imports.add(alias.name)
+                        result["imports"].append(alias.name)
+                        self._classify_import(alias.name, result)
+                        
                 elif isinstance(node, ast.ImportFrom):
                     if node.module:
-                        imports.add(node.module)
-        except Exception:
-            pass
-        return imports
-
-    def _resolve_import(self, module_name: str, current_file: Path) -> str:
+                        result["from_imports"].append(node.module)
+                        self._classify_import(node.module, result)
+                        
+        except Exception as e:
+            logger.debug(f"分析文件失败 {file_path}: {e}")
+        
+        return result
+    
+    def _classify_import(self, module: str, result: Dict):
+        """分类导入为内部或外部"""
+        # 检查是否为相对导入或项目内模块
+        root_module = module.split(".")[0]
+        
+        # 简单规则：标准库和第三方库视为外部
+        stdlib_modules = {
+            "os", "sys", "json", "re", "time", "datetime", "pathlib",
+            "logging", "collections", "typing", "functools", "itertools",
+            "ast", "abc", "copy", "io", "math", "random", "hashlib"
+        }
+        
+        if root_module in stdlib_modules or module in stdlib_modules:
+            result["external"].append(module)
+        elif root_module in ["src", "tests", "flask", "werkzeug", "jinja2"]:
+            result["internal"].append(module)
+        else:
+            result["external"].append(module)
+    
+    def analyze_project(self) -> Dict[str, any]:
         """
-        将模块名解析为文件相对路径
-        这是一个简化的解析逻辑，主要处理项目内引用
-
-        Args:
-            module_name: 导入的模块名 (e.g., 'src.utils')
-            current_file: 当前文件路径
-
+        分析整个项目的依赖关系
+        
         Returns:
-            对应的文件相对路径或None
+            项目依赖分析结果
         """
-        # 尝试直接映射 module.name -> module/name.py
-        parts = module_name.split(".")
-        potential_path = self.repo_path.joinpath(*parts).with_suffix(".py")
-
-        if potential_path.exists():
-            return self._get_rel_path(potential_path)
-
-        # 尝试 module.name -> module/name/__init__.py
-        potential_init = self.repo_path.joinpath(*parts).joinpath("__init__.py")
-        if potential_init.exists():
-            return self._get_rel_path(potential_init)
-
-        return None
+        all_imports = defaultdict(int)
+        file_deps = {}
+        
+        for py_file in self.project_path.rglob("*.py"):
+            if "__pycache__" in str(py_file) or ".git" in str(py_file):
+                continue
+            
+            rel_path = str(py_file.relative_to(self.project_path))
+            file_result = self.analyze_file(str(py_file))
+            file_deps[rel_path] = file_result
+            
+            # 统计导入频率
+            for imp in file_result["imports"] + file_result["from_imports"]:
+                all_imports[imp] += 1
+        
+        # 排序导入
+        sorted_imports = sorted(all_imports.items(), key=lambda x: x[1], reverse=True)
+        
+        return {
+            "files_analyzed": len(file_deps),
+            "total_imports": sum(all_imports.values()),
+            "unique_imports": len(all_imports),
+            "top_imports": sorted_imports[:30],
+            "file_dependencies": file_deps,
+        }
+    
+    def get_dependency_graph(self) -> Dict[str, List[str]]:
+        """
+        获取可用于可视化的依赖图
+        
+        Returns:
+            邻接表形式的依赖图
+        """
+        graph = {}
+        
+        for py_file in self.project_path.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+            
+            rel_path = str(py_file.relative_to(self.project_path))
+            file_result = self.analyze_file(str(py_file))
+            
+            # 只保留内部依赖
+            graph[rel_path] = file_result.get("internal", [])
+        
+        return graph
