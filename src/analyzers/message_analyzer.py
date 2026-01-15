@@ -1,129 +1,149 @@
+# -*- coding: utf-8 -*-
+"""
+提交消息分析模块
+分析Git提交消息的模式和关键词
+"""
 import re
-import logging
-from typing import Dict, Any, List
 from collections import Counter
+from typing import List, Dict, Any
+import logging
 
-# 配置日志记录器
 logger = logging.getLogger(__name__)
 
 
-class MessageAnalyzer:
+# 提交类型分类规则
+COMMIT_TYPES = {
+    "feat": ["feat", "feature", "add", "new", "implement"],
+    "fix": ["fix", "bug", "hotfix", "patch", "resolve", "repair"],
+    "docs": ["doc", "docs", "readme", "documentation", "comment"],
+    "refactor": ["refactor", "restructure", "rewrite", "clean", "simplify"],
+    "test": ["test", "testing", "spec", "coverage"],
+    "chore": ["chore", "update", "upgrade", "build", "ci", "config"],
+    "style": ["style", "format", "lint", "whitespace", "typo"],
+    "perf": ["perf", "performance", "optimize", "speed"],
+}
+
+
+def classify_commit(message: str) -> str:
     """
-    提交消息分析器。
-    用于分析 Git 提交消息的格式、类型和内容特征。
+    根据消息内容分类提交类型
+    
+    Args:
+        message: 提交消息
+        
+    Returns:
+        提交类型
     """
+    msg_lower = message.lower()
+    
+    # 检查是否有Conventional Commits前缀
+    prefix_match = re.match(r'^(\w+)[:\(]', msg_lower)
+    if prefix_match:
+        prefix = prefix_match.group(1)
+        for commit_type, keywords in COMMIT_TYPES.items():
+            if prefix in keywords:
+                return commit_type
+    
+    # 关键词匹配
+    for commit_type, keywords in COMMIT_TYPES.items():
+        for keyword in keywords:
+            if keyword in msg_lower:
+                return commit_type
+    
+    return "other"
 
-    # 常规提交类型模式 (Angular convention)
-    TYPE_PATTERN = re.compile(
-        r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+",
-        re.IGNORECASE,
-    )
 
-    def __init__(self):
-        """初始化消息分析器"""
-        pass
+def analyze_messages(messages: List[str]) -> Dict[str, Any]:
+    """
+    分析提交消息列表
+    
+    Args:
+        messages: 消息列表
+        
+    Returns:
+        分析结果
+    """
+    type_counts = Counter()
+    word_counts = Counter()
+    length_sum = 0
+    
+    for msg in messages:
+        # 分类
+        commit_type = classify_commit(msg)
+        type_counts[commit_type] += 1
+        
+        # 长度统计
+        length_sum += len(msg)
+        
+        # 词频统计（简单分词）
+        words = re.findall(r'\b[a-zA-Z]{3,}\b', msg.lower())
+        word_counts.update(words)
+    
+    # 移除常见无意义词
+    stopwords = {"the", "and", "for", "with", "from", "this", "that", "into"}
+    for sw in stopwords:
+        word_counts.pop(sw, None)
+    
+    return {
+        "total_commits": len(messages),
+        "type_distribution": dict(type_counts),
+        "average_length": length_sum / len(messages) if messages else 0,
+        "top_words": word_counts.most_common(30),
+        "type_percentages": {
+            k: round(v / len(messages) * 100, 1) 
+            for k, v in type_counts.items()
+        } if messages else {},
+    }
 
-    def classify_message(self, message: str) -> str:
-        """
-        分类提交消息类型。
 
-        Args:
-            message: 提交消息内容
+def get_message_patterns(messages: List[str]) -> Dict[str, int]:
+    """
+    分析消息模式
+    
+    Args:
+        messages: 消息列表
+        
+    Returns:
+        模式统计
+    """
+    patterns = {
+        "conventional": 0,  # feat: / fix: 格式
+        "imperative": 0,    # Add / Fix 开头
+        "past_tense": 0,    # Added / Fixed
+        "with_issue": 0,    # 包含 #123
+        "merge": 0,         # Merge pull request
+        "other": 0,
+    }
+    
+    for msg in messages:
+        if re.match(r'^(feat|fix|docs|chore|refactor|test|style)[:\(]', msg, re.I):
+            patterns["conventional"] += 1
+        elif re.match(r'^(Add|Fix|Update|Remove|Improve|Implement)\s', msg):
+            patterns["imperative"] += 1
+        elif re.match(r'^(Added|Fixed|Updated|Removed|Improved|Implemented)\s', msg):
+            patterns["past_tense"] += 1
+        elif re.search(r'#\d+', msg):
+            patterns["with_issue"] += 1
+        elif msg.lower().startswith("merge"):
+            patterns["merge"] += 1
+        else:
+            patterns["other"] += 1
+    
+    return patterns
 
-        Returns:
-            str: 提交类型 (如 feat, fix) 或 'other'
-        """
-        match = self.TYPE_PATTERN.match(message)
-        if match:
-            return match.group(1).lower()
 
-        # 简单的关键词回退机制
-        lower_msg = message.lower()
-        if "merge" in lower_msg:
-            return "merge"
-        if "fix" in lower_msg or "bug" in lower_msg:
-            return "fix"
-        if "add" in lower_msg or "feat" in lower_msg or "new" in lower_msg:
-            return "feat"
-        if "doc" in lower_msg:
-            return "docs"
-
-        return "other"
-
-    def analyze_structure(self, message: str) -> Dict[str, Any]:
-        """
-        分析消息的结构特征。
-
-        Args:
-            message: 提交消息内容
-
-        Returns:
-            Dict: 结构特征字典
-        """
-        lines = message.strip().splitlines()
-        if not lines:
-            return {"length": 0, "lines": 0, "has_body": False}
-
-        subject = lines[0]
-        body_lines = [l for l in lines[1:] if l.strip()]
-
-        return {
-            "length": len(message),
-            "subject_length": len(subject),
-            "line_count": len(lines),
-            "has_body": len(body_lines) > 0,
-            "type": self.classify_message(message),
-        }
-
-    def generate_word_cloud_data(self, messages: List[str]) -> Dict[str, int]:
-        """
-        生成词云数据（词频统计）。
-
-        Args:
-            messages: 提交消息列表
-
-        Returns:
-            Dict: 词频字典
-        """
-        words = []
-        for msg in messages:
-            # 简单的分词，过滤掉非字母字符
-            # 实际项目中可能需要更复杂的 NLP 处理
-            clean_msg = re.sub(r"[^a-zA-Z\s]", "", msg.lower())
-            words.extend(clean_msg.split())
-
-        # 过滤常用停用词（简单列表）
-        stopwords = {
-            "the",
-            "a",
-            "an",
-            "to",
-            "in",
-            "on",
-            "at",
-            "for",
-            "of",
-            "and",
-            "with",
-            "is",
-            "it",
-            "this",
-            "that",
-        }
-        filtered_words = [w for w in words if w not in stopwords and len(w) > 2]
-
-        return dict(Counter(filtered_words))
-
-    def extract_keywords(self, messages: List[str], top_n: int = 10) -> List[tuple]:
-        """
-        提取关键词
-
-        Args:
-            messages: 消息列表
-            top_n: 返回前N个
-
-        Returns:
-            关键词列表 [(word, count), ...]
-        """
-        word_freq = self.generate_word_cloud_data(messages)
-        return sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:top_n]
+def extract_referenced_issues(messages: List[str]) -> List[int]:
+    """
+    提取消息中引用的Issue编号
+    
+    Args:
+        messages: 消息列表
+        
+    Returns:
+        Issue编号列表
+    """
+    issues = []
+    for msg in messages:
+        matches = re.findall(r'#(\d+)', msg)
+        issues.extend([int(m) for m in matches])
+    return sorted(set(issues))
