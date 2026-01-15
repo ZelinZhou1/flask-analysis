@@ -1,13 +1,7 @@
 """
 Flask Repository Analyzer - Analyzers Module
 
-该模块包含了用于分析 Flask 仓库的各种分析器，包括：
-- AST 分析 (ast_analyzer)
-- LibCST 分析 (libcst_analyzer)
-- 动态追踪 (dynamic_tracer)
-- 统计分析 (stats)
-- 消息分析 (message_analyzer)
-- Z3 符号分析 (z3_analyzer)
+该模块包含了用于分析 Flask 仓库的各种分析器
 """
 
 from .ast_analyzer import ASTAnalyzer
@@ -15,7 +9,9 @@ from .libcst_analyzer import LibCSTAnalyzer
 from .z3_analyzer import Z3Analyzer
 from .dynamic_tracer import DynamicTracer
 from .stats import CodeStats
-from .message_analyzer import MessageAnalyzer
+from .message_analyzer import analyze_messages, classify_commit
+from .complexity_analyzer import ComplexityAnalyzer
+from .dependency_analyzer import DependencyAnalyzer
 
 __all__ = [
     "ASTAnalyzer",
@@ -23,5 +19,9 @@ __all__ = [
     "Z3Analyzer",
     "DynamicTracer",
     "CodeStats",
-    "MessageAnalyzer",
+    "analyze_messages",
+    "classify_commit",
+    "ComplexityAnalyzer",
+    "DependencyAnalyzer",
 ]
+
