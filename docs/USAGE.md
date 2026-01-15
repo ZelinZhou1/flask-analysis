@@ -35,15 +35,31 @@ output/         # 生成的图表
 ## 命令行选项
 
 ```bash
-# 指定仓库路径
-python main.py --repo /path/to/flask
+# 完整分析（使用缓存）
+python main.py
 
-# 只生成图表（跳过数据采集）
-python main.py --charts-only
+# 采集所有GitHub数据（Issues/PRs/Contributors）
+python main.py --fetch
 
-# 启用缓存
-python main.py --cache
+# 只采集Issues
+python main.py --fetch issues
+
+# 只采集PRs
+python main.py --fetch prs
+
+# 只采集贡献者
+python main.py --fetch contributors
+
+# 强制重新采集Git数据（忽略缓存）
+python main.py --no-cache
+
+# 单独生成图表
+python generate_charts.py
+
+# 显示帮助
+python main.py --help
 ```
+
 
 ## 配置文件
 
