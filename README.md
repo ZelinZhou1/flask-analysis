@@ -163,6 +163,20 @@ flask-analysis/
 - pr_merge_time.png - 合并时间分布
 - top_pr_authors.png - PRs作者排行
 
+## 📷 图表展示
+
+### 提交分析
+![年度提交统计](output/commits_by_year.png)
+
+### 热力图
+![提交时间热力图](output/commit_heatmap.png)
+
+### 贡献者分析
+![贡献占比](output/authors_pie.png)
+
+### 词云
+![提交消息词云](output/wordcloud.png)
+
 ## 🎨 配色方案
 
 本项目采用**暖色系**（Warm Colors）配色方案：
@@ -179,8 +193,3 @@ flask-analysis/
 | lff20041215 | 可视化图表 |
 | liujianqi258 | 分析器模块 |
 | sasageiyou | 测试与优化 |
-
-## 📄 许可证
-
-MIT License
-
