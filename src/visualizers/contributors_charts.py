@@ -1,155 +1,179 @@
 # -*- coding: utf-8 -*-
 """
-贡献者统计可视化模块
-生成贡献者排行榜、活跃度分布等图表
+贡献者分析可视化模块
 """
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
-from typing import List, Dict, Any
+from typing import List, Dict
+from collections import Counter
+import logging
 
-from src.config import OUTPUT_DIR, WARM_COLORS, WARM_PALETTE
-from src.visualizers.style import apply_style, save_plot
+from src.visualizers.style import apply_style, save_plot, get_palette, get_color
+
+logger = logging.getLogger(__name__)
 
 
-def plot_contributors_leaderboard(
-    contributors_data: List[Dict[str, Any]], top_n: int = 10
+def plot_contributors_ranking(
+    contributors: List[Dict],
+    output_path: str,
+    title: str = "贡献者提交排行",
+    top_n: int = 20
 ) -> None:
     """
-    绘制贡献者排行榜 (按提交数)
-
-    Args:
-        contributors_data: 贡献者数据列表
-        top_n: 显示前N名
+    绘制贡献者提交排行
     """
     apply_style()
-
-    if not contributors_data:
-        print("没有贡献者数据，跳过绘制。")
+    
+    if not contributors:
+        logger.warning("没有贡献者数据")
         return
-
-    df = pd.DataFrame(contributors_data)
-    if "name" not in df.columns or "commits" not in df.columns:
-        return
-
-    # 按提交数排序
-    df = df.sort_values("commits", ascending=False).head(top_n)
-
-    plt.figure(figsize=(12, 8))
-
-    sns.barplot(
-        data=df, y="name", x="commits", palette=WARM_PALETTE[: len(df)], orient="h"
-    )
-
-    plt.xlabel("提交数量", fontsize=12)
-    plt.ylabel("贡献者", fontsize=12)
-
-    # 添加数值标签
-    for i, v in enumerate(df["commits"]):
-        plt.text(
-            v + 0.5,
-            i,
-            str(v),
-            color=WARM_COLORS["dark"],
-            va="center",
-            fontweight="bold",
-        )
-
-    output_path = OUTPUT_DIR / "contributors_leaderboard.png"
-    save_plot(str(output_path), f"贡献者排行榜 Top {top_n}")
+    
+    data = {}
+    for c in contributors[:top_n]:
+        login = c.get("login", "unknown")
+        contributions = c.get("contributions", 0)
+        data[login] = contributions
+    
+    plt.figure(figsize=(12, 10))
+    
+    colors = get_palette()
+    names = list(data.keys())
+    values = list(data.values())
+    
+    bars = plt.barh(names, values, color=colors[:len(names)])
+    
+    plt.xlabel("贡献数")
+    plt.ylabel("贡献者")
+    plt.gca().invert_yaxis()
+    
+    for bar, val in zip(bars, values):
+        plt.text(bar.get_width() + max(values)*0.01, bar.get_y() + bar.get_height()/2, 
+                 str(val), va="center", fontsize=9)
+    
+    save_plot(output_path, title)
 
 
-def plot_code_changes_by_author(
-    contributors_data: List[Dict[str, Any]], top_n: int = 10
+def plot_contributions_pie(
+    contributors: List[Dict],
+    output_path: str,
+    title: str = "贡献占比分布",
+    top_n: int = 10
 ) -> None:
     """
-    绘制每位作者的代码增删情况 (堆叠柱状图)
-
-    Args:
-        contributors_data: 贡献者数据列表
+    绘制贡献占比饼图
     """
     apply_style()
-
-    if not contributors_data:
+    
+    if not contributors:
+        logger.warning("没有贡献者数据")
         return
-
-    df = pd.DataFrame(contributors_data)
-    if "additions" not in df.columns or "deletions" not in df.columns:
-        return
-
-    # 按总修改量排序
-    df["total"] = df["additions"] + df["deletions"]
-    df = df.sort_values("total", ascending=False).head(top_n)
-
-    plt.figure(figsize=(12, 8))
-
-    # 绘制增加行数
-    plt.barh(
-        df["name"],
-        df["additions"],
-        label="增加代码 (Additions)",
-        color=WARM_COLORS["primary"],
-    )
-
-    # 绘制删除行数（使用负值让其向左，或者并在右边？通常堆叠或并列。这里使用堆叠）
-    plt.barh(
-        df["name"],
-        df["deletions"],
-        left=df["additions"],
-        label="删除代码 (Deletions)",
-        color=WARM_COLORS["tertiary"],
-    )
-
-    plt.xlabel("代码行数变更", fontsize=12)
-    plt.ylabel("贡献者", fontsize=12)
-    plt.legend()
-
-    output_path = OUTPUT_DIR / "author_changes.png"
-    save_plot(str(output_path), f"代码增删统计 Top {top_n}")
-
-
-def plot_author_contribution_pie(contributors_data: List[Dict[str, Any]]) -> None:
-    """
-    绘制作者贡献占比饼图
-    """
-    apply_style()
-
-    if not contributors_data:
-        return
-
-    df = pd.DataFrame(contributors_data)
-    total_commits = df["commits"].sum()
-
-    # 将小贡献者合并为 "Others"
-    threshold = total_commits * 0.02  # 小于2%的
-
-    main_contributors = df[df["commits"] >= threshold].copy()
-    others_count = df[df["commits"] < threshold]["commits"].sum()
-
-    if others_count > 0:
-        new_row = pd.DataFrame([{"name": "Others", "commits": others_count}])
-        main_contributors = pd.concat([main_contributors, new_row], ignore_index=True)
-
-    # 排序
-    main_contributors = main_contributors.sort_values("commits", ascending=False)
-
+    
+    data = {}
+    total = 0
+    for c in contributors:
+        contributions = c.get("contributions", 0)
+        total += contributions
+    
+    for c in contributors[:top_n]:
+        login = c.get("login", "unknown")
+        contributions = c.get("contributions", 0)
+        data[login] = contributions
+    
+    top_total = sum(data.values())
+    if total > top_total:
+        data["其他"] = total - top_total
+    
     plt.figure(figsize=(10, 10))
+    
+    colors = get_palette()
+    plt.pie(data.values(), labels=data.keys(), autopct="%1.1f%%", 
+            colors=colors[:len(data)], startangle=90)
+    
+    save_plot(output_path, title)
 
-    plt.pie(
-        main_contributors["commits"],
-        labels=main_contributors["name"],
-        autopct="%1.1f%%",
-        startangle=140,
-        pctdistance=0.85,
-        colors=WARM_PALETTE[: len(main_contributors)],
-        explode=[0.05] * len(main_contributors),
-    )
 
-    # 中心圆
-    centre_circle = plt.Circle((0, 0), 0.70, fc=WARM_COLORS["background"])
-    fig = plt.gcf()
-    fig.gca().add_artist(centre_circle)
+def plot_contributors_timeline(
+    commits_df: pd.DataFrame,
+    output_path: str,
+    title: str = "贡献者活跃时间线",
+    top_n: int = 10
+) -> None:
+    """
+    绘制贡献者活跃时间线
+    """
+    apply_style()
+    
+    if commits_df.empty:
+        logger.warning("没有提交数据")
+        return
+    
+    df = commits_df.copy()
+    
+    if "date" not in df.columns:
+        if "committer_date" in df.columns:
+            df["date"] = pd.to_datetime(df["committer_date"], utc=True)
+        else:
+            return
+    else:
+        df["date"] = pd.to_datetime(df["date"], utc=True)
+    
+    df["year"] = df["date"].dt.year
+    
+    top_authors = df["author_name"].value_counts().head(top_n).index.tolist()
+    
+    plt.figure(figsize=(14, 8))
+    
+    colors = get_palette()
+    for i, author in enumerate(top_authors):
+        author_df = df[df["author_name"] == author]
+        yearly = author_df.groupby("year").size()
+        plt.plot(yearly.index, yearly.values, marker="o", 
+                 label=author[:15], color=colors[i % len(colors)], linewidth=2)
+    
+    plt.xlabel("年份")
+    plt.ylabel("提交数")
+    plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+    plt.grid(True, alpha=0.3)
+    
+    save_plot(output_path, title)
 
-    output_path = OUTPUT_DIR / "author_distribution.png"
-    save_plot(str(output_path), "贡献者分布")
+
+def plot_first_contribution_timeline(
+    commits_df: pd.DataFrame,
+    output_path: str,
+    title: str = "新贡献者加入趋势"
+) -> None:
+    """
+    绘制每年新加入贡献者数量
+    """
+    apply_style()
+    
+    if commits_df.empty:
+        logger.warning("没有提交数据")
+        return
+    
+    df = commits_df.copy()
+    
+    if "date" not in df.columns:
+        if "committer_date" in df.columns:
+            df["date"] = pd.to_datetime(df["committer_date"], utc=True)
+        else:
+            return
+    else:
+        df["date"] = pd.to_datetime(df["date"], utc=True)
+    
+    df["year"] = df["date"].dt.year
+    
+    first_year = df.groupby("author_name")["year"].min()
+    new_contributors = first_year.value_counts().sort_index()
+    
+    plt.figure(figsize=(12, 6))
+    
+    plt.bar(new_contributors.index.astype(str), new_contributors.values, color=get_color("primary"))
+    
+    plt.xlabel("年份")
+    plt.ylabel("新贡献者数")
+    plt.xticks(rotation=45, ha="right")
+    
+    save_plot(output_path, title)
