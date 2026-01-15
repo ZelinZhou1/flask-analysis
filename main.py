@@ -33,30 +33,56 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 def ensure_directories():
-    """Ensure data and output directories exist."""
+    """确保数据和输出目录存在"""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def collect_data():
-    """Step 1: Collect data from the repository."""
-    logger.info("Step 1: Collecting data...")
+def load_cached_commits():
+    """尝试从缓存加载提交数据"""
+    cache_file = DATA_DIR / "commits.json"
+    if cache_file.exists():
+        logger.info(f"发现缓存文件: {cache_file}")
+        try:
+            with open(cache_file, "r", encoding="utf-8") as f:
+                commits = json.load(f)
+            logger.info(f"从缓存加载了 {len(commits)} 条提交记录")
+            return commits
+        except Exception as e:
+            logger.warning(f"缓存加载失败: {e}")
+    return None
+
+
+def collect_data(use_cache: bool = True):
+    """
+    Step 1: 从仓库采集数据
+    
+    Args:
+        use_cache: 是否使用缓存，默认True
+    """
+    logger.info("Step 1: 采集数据...")
+    
+    # 尝试使用缓存
+    if use_cache:
+        cached = load_cached_commits()
+        if cached:
+            return cached
 
     if not FLASK_REPO_PATH.exists():
-        logger.error(f"Repository not found at {FLASK_REPO_PATH}")
+        logger.error(f"仓库不存在: {FLASK_REPO_PATH}")
         return None
 
     collector = PyDrillerCollector(str(FLASK_REPO_PATH))
     commits = list(collector.collect_commits())
 
-    logger.info(f"Collected {len(commits)} commits.")
+    logger.info(f"采集到 {len(commits)} 条提交记录")
 
-    # Save raw data
+    # 保存到缓存
     raw_data_path = DATA_DIR / "commits.json"
     with open(raw_data_path, "w", encoding="utf-8") as f:
-        json.dump(commits, f, default=str, indent=2)
+        json.dump(commits, f, default=str, indent=2, ensure_ascii=False)
+    logger.info(f"数据已保存到: {raw_data_path}")
 
     return commits
 
