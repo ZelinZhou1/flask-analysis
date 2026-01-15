@@ -1,155 +1,199 @@
+# -*- coding: utf-8 -*-
 """
-GitHub API 采集器
-使用 GitHub API 采集仓库的 Issues, Pull Requests 和其他元数据
+GitHub API访问模块
+用于获取Issues、PRs和贡献者数据
 """
-
 import requests
+import time
+import json
 import logging
-import os
 from typing import List, Dict, Any, Optional
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubCollector:
+class GitHubAPI:
     """
-    负责从 GitHub API 收集数据的采集器
+    GitHub REST API封装类
+    支持获取Issues、PRs、贡献者等数据
     """
-
+    
     BASE_URL = "https://api.github.com"
-
-    def __init__(self, owner: str, repo: str, token: Optional[str] = None):
+    
+    def __init__(self, repo: str, token: Optional[str] = None):
         """
-        初始化 GitHub 采集器
-
+        初始化GitHub API客户端
+        
         Args:
-            owner: 仓库拥有者 (如 'pallets')
-            repo: 仓库名称 (如 'flask')
-            token: GitHub Personal Access Token (可选，建议提供以提高限流阈值)
+            repo: 仓库名称，格式为 "owner/repo"
+            token: GitHub Personal Access Token（可选，用于提高速率限制）
         """
-        self.owner = owner
         self.repo = repo
-        self.token = token or os.environ.get("GITHUB_TOKEN")
-        self.headers = {"Accept": "application/vnd.github.v3+json"}
-        if self.token:
-            self.headers["Authorization"] = f"token {self.token}"
-
-    def _make_request(self, endpoint: str, params: Optional[Dict] = None) -> Any:
+        self.token = token
+        self.headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Flask-Repo-Analyzer"
+        }
+        if token:
+            self.headers["Authorization"] = f"token {token}"
+    
+    def _request(self, endpoint: str, params: Dict = None) -> Optional[Dict]:
         """
-        发送 API 请求的通用方法，处理分页
-        """
-        url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/{endpoint}"
-        results = []
-        page = 1
-
-        while True:
-            current_params = params.copy() if params else {}
-            current_params["page"] = page
-            current_params["per_page"] = 100  # 最大每页数量
-
-            try:
-                logger.debug(f"Requesting {url} page {page}")
-                response = requests.get(
-                    url, headers=self.headers, params=current_params
-                )
-
-                if response.status_code == 403:
-                    logger.warning("GitHub API rate limit exceeded or forbidden")
-                    break
-
-                response.raise_for_status()
-                data = response.json()
-
-                if not data:
-                    break
-
-                if isinstance(data, list):
-                    results.extend(data)
-                    if len(data) < 100:  # 如果当前页不满，说明是最后一页
-                        break
-                else:
-                    return data  # 非列表响应直接返回
-
-                page += 1
-
-            except requests.exceptions.RequestException as e:
-                logger.error(f"GitHub API 请求失败: {str(e)}")
-                break
-
-        return results
-
-    def collect_issues(self, state: str = "all") -> List[Dict[str, Any]]:
-        """
-        采集 Issues (包含 PR，因为 GitHub 将 PR 视为一种特殊的 Issue)
-
+        发送API请求
+        
         Args:
-            state: 状态 'open', 'closed', 'all'
+            endpoint: API端点
+            params: 查询参数
+            
+        Returns:
+            JSON响应数据
         """
-        logger.info(f"开始采集 Issues ({state})...")
-        issues = self._make_request("issues", {"state": state})
-
-        # 简单过滤，区分 Issue 和 PR
-        processed_issues = []
-        for item in issues:
-            is_pr = "pull_request" in item
-            processed_issues.append(
-                {
-                    "number": item["number"],
-                    "title": item["title"],
-                    "state": item["state"],
-                    "created_at": item["created_at"],
-                    "closed_at": item["closed_at"],
-                    "author": item["user"]["login"],
-                    "labels": [l["name"] for l in item["labels"]],
-                    "comments_count": item["comments"],
-                    "is_pr": is_pr,
-                    "body_length": len(item.get("body") or ""),
-                }
-            )
-
-        logger.info(f"采集到 {len(processed_issues)} 个 Issues/PRs")
-        return processed_issues
-
-    def collect_contributors(self) -> List[Dict[str, Any]]:
-        """
-        采集贡献者列表
-        """
-        logger.info("开始采集贡献者...")
-        contributors = self._make_request("contributors")
-
-        data = []
-        if isinstance(contributors, list):
-            for c in contributors:
-                data.append(
-                    {
-                        "login": c["login"],
-                        "contributions": c["contributions"],
-                        "type": c["type"],
-                        "site_admin": c["site_admin"],
-                    }
-                )
-
-        return data
-
-    def collect_repo_info(self) -> Dict[str, Any]:
-        """
-        采集仓库基本信息 (Stars, Forks, etc.)
-        """
-        url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}"
+        url = f"{self.BASE_URL}{endpoint}"
+        
         try:
-            response = requests.get(url, headers=self.headers)
-            response.raise_for_status()
-            data = response.json()
-            return {
-                "stars": data.get("stargazers_count", 0),
-                "forks": data.get("forks_count", 0),
-                "watchers": data.get("subscribers_count", 0),
-                "open_issues": data.get("open_issues_count", 0),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
-                "language": data.get("language"),
-                "size": data.get("size"),
-            }
-        except Exception as e:
-            logger.error(f"获取仓库信息失败: {str(e)}")
-            return {}
+            resp = requests.get(url, headers=self.headers, params=params, timeout=30)
+            
+            # 检查速率限制
+            if resp.status_code == 403:
+                reset_time = int(resp.headers.get("X-RateLimit-Reset", 0))
+                wait_time = max(reset_time - int(time.time()), 60)
+                logger.warning(f"API速率限制，等待{wait_time}秒...")
+                time.sleep(min(wait_time, 300))
+                return self._request(endpoint, params)
+            
+            resp.raise_for_status()
+            return resp.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API请求失败: {e}")
+            return None
+    
+    def get_issues(self, state: str = "all", max_pages: int = 10) -> List[Dict]:
+        """
+        获取Issues列表
+        
+        Args:
+            state: 状态过滤 ("open", "closed", "all")
+            max_pages: 最大页数
+            
+        Returns:
+            Issues列表
+        """
+        all_issues = []
+        page = 1
+        
+        while page <= max_pages:
+            logger.info(f"获取Issues第{page}页...")
+            
+            data = self._request(
+                f"/repos/{self.repo}/issues",
+                params={"state": state, "per_page": 100, "page": page}
+            )
+            
+            if not data:
+                break
+            
+            # 过滤掉PRs（Issues API会包含PRs）
+            issues = [i for i in data if "pull_request" not in i]
+            all_issues.extend(issues)
+            
+            if len(data) < 100:
+                break
+            page += 1
+        
+        logger.info(f"共获取{len(all_issues)}个Issues")
+        return all_issues
+    
+    def get_pull_requests(self, state: str = "all", max_pages: int = 10) -> List[Dict]:
+        """
+        获取Pull Requests列表
+        
+        Args:
+            state: 状态过滤 ("open", "closed", "all")
+            max_pages: 最大页数
+            
+        Returns:
+            PRs列表
+        """
+        all_prs = []
+        page = 1
+        
+        while page <= max_pages:
+            logger.info(f"获取PRs第{page}页...")
+            
+            data = self._request(
+                f"/repos/{self.repo}/pulls",
+                params={"state": state, "per_page": 100, "page": page}
+            )
+            
+            if not data:
+                break
+            
+            all_prs.extend(data)
+            
+            if len(data) < 100:
+                break
+            page += 1
+        
+        logger.info(f"共获取{len(all_prs)}个PRs")
+        return all_prs
+    
+    def get_contributors(self, max_pages: int = 5) -> List[Dict]:
+        """
+        获取贡献者列表
+        
+        Args:
+            max_pages: 最大页数
+            
+        Returns:
+            贡献者列表
+        """
+        all_contributors = []
+        page = 1
+        
+        while page <= max_pages:
+            logger.info(f"获取贡献者第{page}页...")
+            
+            data = self._request(
+                f"/repos/{self.repo}/contributors",
+                params={"per_page": 100, "page": page}
+            )
+            
+            if not data:
+                break
+            
+            all_contributors.extend(data)
+            
+            if len(data) < 100:
+                break
+            page += 1
+        
+        logger.info(f"共获取{len(all_contributors)}个贡献者")
+        return all_contributors
+    
+    def get_repo_info(self) -> Optional[Dict]:
+        """
+        获取仓库信息
+        
+        Returns:
+            仓库信息字典
+        """
+        return self._request(f"/repos/{self.repo}")
+    
+    def save_data(self, data: Any, filename: str, data_dir: str = "data"):
+        """
+        保存数据到JSON文件
+        
+        Args:
+            data: 要保存的数据
+            filename: 文件名
+            data_dir: 数据目录
+        """
+        path = Path(data_dir) / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"数据已保存到: {path}")
