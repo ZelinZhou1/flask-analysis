@@ -1,9 +1,5 @@
-# docs/USAGE.md
-"""
-使用指南文档 - Flask仓库分析工具
-"""
-
 # Flask Repository Analyzer 使用指南
+
 
 ## 基本运行
 
