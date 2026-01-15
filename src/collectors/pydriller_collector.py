@@ -58,11 +58,15 @@ class PyDrillerCollector:
                     "insertions": commit.insertions,
                     "deletions": commit.deletions,
                     "files": len(commit.modified_files),
-                    "dmm_unit_size": commit.dmm_unit_size,
-                    "dmm_complexity": commit.dmm_complexity,
-                    "dmm_interfacing": commit.dmm_interfacing,
                     "modified_files_list": [f.filename for f in commit.modified_files],
                 }
+                # 安全访问可能不存在的属性
+                try:
+                    commit_data["dmm_unit_size"] = commit.dmm_unit_size
+                    commit_data["dmm_unit_complexity"] = commit.dmm_unit_complexity
+                    commit_data["dmm_unit_interfacing"] = commit.dmm_unit_interfacing
+                except:
+                    pass
                 yield commit_data
 
         except Exception as e:
